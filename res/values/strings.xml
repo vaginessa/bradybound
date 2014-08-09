@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">BradyBound</string>
+    <string name="config_min_inbound_speed">1</string>
+    <string name="config_max_inbound_speed">10000</string>
+    <string name="config_def_inbound_speed">100</string>
+
+    <!-- Everything below this line can be translated -->
+
+    <string name="usage_notes">❗ Speed limit is cleared after every reboot.\n❗ USB tethered and hotspot clients are not affected.</string>
+    <string name="inbound_speed_header">Download Speed Limit</string>
+    <string name="set_label">Set Limit</string>
+    <string name="unset_label">Clear</string>
+    <string name="inbound_install_failed">Set limit failed</string>
+    <string name="inbound_uninstall_failed">Clear limit failed</string>
+
+</resources>
