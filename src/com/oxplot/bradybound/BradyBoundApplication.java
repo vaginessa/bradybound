@@ -14,15 +14,14 @@ public class BradyBoundApplication extends Application {
   private static final String TEXT_ENC = "UTF-8";
   private static final String IPROUTE_RULE_NAME = "BRADYBOUNDHN";
 
-  private static final String INSTALL_INBOUND_SH = "install_inbound.sh";
-  private static final String UNINSTALL_INBOUND_SH = "uninstall_inbound.sh";
+  private static final String INBOUND_SH = "inbound.sh";
 
   private static final String TAG = "App";
 
   public boolean installInboundShaper(int speed) {
     int packetEst = Math.max((int) Math.round(speed / KB_PER_PACKET), 1);
     if (!"1".equals(runInShell("su",
-        getAssetAsString(INSTALL_INBOUND_SH, IPROUTE_RULE_NAME, packetEst)))) {
+        getAssetAsString(INBOUND_SH, IPROUTE_RULE_NAME, packetEst, "install")))) {
       Log.e(TAG, "installInboundShaper failed");
       return false;
     }
@@ -31,7 +30,7 @@ public class BradyBoundApplication extends Application {
 
   public boolean uninstallInboundShaper() {
     if (!"1".equals(runInShell("su",
-        getAssetAsString(UNINSTALL_INBOUND_SH, IPROUTE_RULE_NAME)))) {
+        getAssetAsString(INBOUND_SH, IPROUTE_RULE_NAME, 0, "uninstall")))) {
       Log.e(TAG, "uninstallInboundShaper failed");
       return false;
     }
