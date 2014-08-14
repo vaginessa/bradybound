@@ -121,7 +121,8 @@ public class ControlPanelActivity extends Activity implements
   public void onClick(View button) {
     if (button == setButton) {
       int newSpeed = prefs.getInt(PREF_INBOUND_SPEED, -1);
-      if (app.installInboundShaper(newSpeed) == BradyBoundApplication.SHELL_OK) {
+      int result = app.installInboundShaper(newSpeed);
+      if (result == BradyBoundApplication.SHELL_OK) {
         setButton.setEnabled(false);
         setButton.setTypeface(null, Typeface.NORMAL);
         setButton.setTextColor(normalButtonColors);
@@ -130,17 +131,24 @@ public class ControlPanelActivity extends Activity implements
             getString(R.string.inbound_install_succeeded,
                 toReadableSpeed(newSpeed)), Toast.LENGTH_SHORT).show();
       } else {
-        Toast.makeText(this, R.string.inbound_install_failed,
-            Toast.LENGTH_SHORT).show();
+        if (result == BradyBoundApplication.SHELL_UNAVAILABLE)
+          Toast.makeText(this, R.string.no_root, Toast.LENGTH_SHORT).show();
+        else
+          Toast.makeText(this, R.string.inbound_install_failed,
+              Toast.LENGTH_SHORT).show();
       }
     } else if (button == unsetButton) {
-      if (app.uninstallInboundShaper() == BradyBoundApplication.SHELL_OK) {
+      int result = app.uninstallInboundShaper();
+      if (result == BradyBoundApplication.SHELL_OK) {
         setButton.setEnabled(true);
         Toast.makeText(this, R.string.inbound_uninstall_succeeded,
             Toast.LENGTH_SHORT).show();
       } else {
-        Toast.makeText(this, R.string.inbound_uninstall_failed,
-            Toast.LENGTH_SHORT).show();
+        if (result == BradyBoundApplication.SHELL_UNAVAILABLE)
+          Toast.makeText(this, R.string.no_root, Toast.LENGTH_SHORT).show();
+        else
+          Toast.makeText(this, R.string.inbound_uninstall_failed,
+              Toast.LENGTH_SHORT).show();
       }
     }
   }

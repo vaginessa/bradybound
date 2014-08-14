@@ -13,9 +13,8 @@ import android.util.Log;
 public class BradyBoundApplication extends Application {
 
   public static final int SHELL_OK = 0;
-  public static final int SHELL_ACCESS_DENIED = 1;
-  public static final int SHELL_UNAVAILABLE = 2;
-  public static final int SHELL_CMD_FAILED = 3;
+  public static final int SHELL_UNAVAILABLE = 1;
+  public static final int SHELL_CMD_FAILED = 2;
 
   private static final String TEXT_ENC = "UTF-8";
   private static final String CHECK_LABEL = "BRADYBOUND";
@@ -48,7 +47,7 @@ public class BradyBoundApplication extends Application {
 
       if (!CHECK_LABEL.equals(ins.readLine())) {
         Log.e(TAG, "access to shell denied");
-        return SHELL_ACCESS_DENIED;
+        return SHELL_UNAVAILABLE;
       }
 
       // Run the shell scripts
