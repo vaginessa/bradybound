@@ -2,6 +2,7 @@ package com.oxplot.bradybound;
 
 import android.app.Activity;
 import android.content.SharedPreferences;
+import android.content.res.ColorStateList;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
@@ -20,6 +21,7 @@ public class ControlPanelActivity extends Activity implements
   private static final int INBOUND_SEEKBAR_STEPS = 20000;
 
   private SeekBar inboundSpeedSeekbar;
+  private ColorStateList normalButtonColors;
   private Button setButton;
   private Button unsetButton;
   private TextView inboundSpeedLabel;
@@ -43,6 +45,7 @@ public class ControlPanelActivity extends Activity implements
     inboundSpeedLabel = (TextView) findViewById(R.id.inbound_speed);
     setButton = (Button) findViewById(R.id.set_button);
     unsetButton = (Button) findViewById(R.id.unset_button);
+    normalButtonColors = setButton.getTextColors();
 
     prefs = PreferenceManager.getDefaultSharedPreferences(this);
     inboundSpeedSeekbar.setOnSeekBarChangeListener(this);
@@ -103,6 +106,7 @@ public class ControlPanelActivity extends Activity implements
     prefs.edit().putInt(PREF_INBOUND_SPEED, nonLogSpeed).commit();
     setButton.setEnabled(true);
     setButton.setTypeface(null, Typeface.BOLD);
+    setButton.setTextColor(getResources().getColor(R.color.highlighted));
   }
 
   @Override
@@ -116,21 +120,27 @@ public class ControlPanelActivity extends Activity implements
   @Override
   public void onClick(View button) {
     if (button == setButton) {
-      if (!app.installInboundShaper(prefs.getInt(PREF_INBOUND_SPEED, -1))) {
-        Toast.makeText(this, R.string.inbound_install_failed,
-            Toast.LENGTH_SHORT).show();
-        ;
-      } else {
+      int newSpeed = prefs.getInt(PREF_INBOUND_SPEED, -1);
+      if (app.installInboundShaper(newSpeed) == BradyBoundApplication.SHELL_OK) {
         setButton.setEnabled(false);
         setButton.setTypeface(null, Typeface.NORMAL);
+        setButton.setTextColor(normalButtonColors);
+        Toast.makeText(
+            this,
+            getString(R.string.inbound_install_succeeded,
+                toReadableSpeed(newSpeed)), Toast.LENGTH_SHORT).show();
+      } else {
+        Toast.makeText(this, R.string.inbound_install_failed,
+            Toast.LENGTH_SHORT).show();
       }
     } else if (button == unsetButton) {
-      if (!app.uninstallInboundShaper()) {
+      if (app.uninstallInboundShaper() == BradyBoundApplication.SHELL_OK) {
+        setButton.setEnabled(true);
+        Toast.makeText(this, R.string.inbound_uninstall_succeeded,
+            Toast.LENGTH_SHORT).show();
+      } else {
         Toast.makeText(this, R.string.inbound_uninstall_failed,
             Toast.LENGTH_SHORT).show();
-        ;
-      } else {
-        setButton.setEnabled(true);
       }
     }
   }

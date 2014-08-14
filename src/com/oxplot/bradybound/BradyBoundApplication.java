@@ -1,100 +1,141 @@
 package com.oxplot.bradybound;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.util.ArrayList;
+import java.util.Collection;
 
 import android.app.Application;
 import android.util.Log;
 
 public class BradyBoundApplication extends Application {
 
-  private static final double KB_PER_PACKET = 1.3;
+  public static final int SHELL_OK = 0;
+  public static final int SHELL_ACCESS_DENIED = 1;
+  public static final int SHELL_UNAVAILABLE = 2;
+  public static final int SHELL_CMD_FAILED = 3;
 
   private static final String TEXT_ENC = "UTF-8";
-  private static final String IPROUTE_RULE_NAME = "BRADYBOUNDHN";
-
-  private static final String INBOUND_SH = "inbound.sh";
+  private static final String CHECK_LABEL = "BRADYBOUND";
+  private static final String SHELL_CMD = "su";
 
   private static final String TAG = "App";
 
-  public boolean installInboundShaper(int speed) {
-    int packetEst = Math.max((int) Math.round(speed / KB_PER_PACKET), 1);
-    if (!"1".equals(runInShell("su",
-        getAssetAsString(INBOUND_SH, IPROUTE_RULE_NAME, packetEst, "install")))) {
-      Log.e(TAG, "installInboundShaper failed");
-      return false;
-    }
-    return true;
+  public int installInboundShaper(int speed) {
+    return runInShell(SHELL_CMD, new ShellScript[] { new UninstallScript(),
+        new InstallScript(speed) });
   }
 
-  public boolean uninstallInboundShaper() {
-    if (!"1".equals(runInShell("su",
-        getAssetAsString(INBOUND_SH, IPROUTE_RULE_NAME, 0, "uninstall")))) {
-      Log.e(TAG, "uninstallInboundShaper failed");
-      return false;
-    }
-    return true;
+  public int uninstallInboundShaper() {
+    return runInShell(SHELL_CMD, new ShellScript[] { new UninstallScript() });
   }
 
-  private String runInShell(String shell, String script) {
+  private int runInShell(String shell, ShellScript... scripts) {
     Process proc = null;
     try {
       proc = Runtime.getRuntime().exec(new String[] { shell });
       OutputStreamWriter outs = new OutputStreamWriter(proc.getOutputStream(),
           TEXT_ENC);
-      InputStreamReader ins = new InputStreamReader(proc.getInputStream(),
-          TEXT_ENC);
-      char[] inBuf = new char[4096];
+      BufferedReader ins = new BufferedReader(new InputStreamReader(
+          proc.getInputStream(), TEXT_ENC));
 
       // Check if we have access to this shell to run commands
 
-      outs.write("echo -n T\n");
+      outs.write("exec 2>/dev/null\necho " + CHECK_LABEL + "\n");
       outs.flush();
-      if (ins.read(inBuf, 0, 1) != 1 || inBuf[0] != 'T') {
+
+      if (!CHECK_LABEL.equals(ins.readLine())) {
         Log.e(TAG, "access to shell denied");
-        return null;
+        return SHELL_ACCESS_DENIED;
       }
 
-      // We throw away stderr as not to fill up the error stream buffer
+      // Run the shell scripts
 
-      outs.write("exec 2>/dev/null\n" + script + "\n");
-      outs.close();
-
-      // Read the shell output
-
-      StringBuilder shellOutput = new StringBuilder();
-      int bytesRead;
-      while ((bytesRead = ins.read(inBuf, 0, inBuf.length)) > 0) {
-        shellOutput.append(inBuf, 0, bytesRead);
+      for (ShellScript script : scripts) {
+        int ret = script.run(ins, outs);
+        if (ret != SHELL_OK)
+          return ret;
       }
 
-      return shellOutput.toString();
+      return SHELL_OK;
 
     } catch (IOException e) {
       Log.e(TAG, "access to shell denied/unavailable", e);
+      return SHELL_UNAVAILABLE;
     } finally {
-      if (proc != null)
-        proc.destroy();
+      try {
+        proc.getOutputStream().close();
+      } catch (Exception e) {}
     }
-    return null;
   }
 
-  private String getAssetAsString(String name, Object... args) {
-    try {
-      char[] buffer = new char[4096];
-      int bytesRead;
-      StringBuilder output = new StringBuilder();
-      InputStreamReader asset = new InputStreamReader(getAssets().open(name),
-          TEXT_ENC);
+  private static interface ShellScript {
+    int run(BufferedReader ins, OutputStreamWriter outs) throws IOException;
+  }
 
-      while ((bytesRead = asset.read(buffer, 0, buffer.length)) > 0)
-        output.append(buffer, 0, bytesRead);
+  private static class InstallScript implements ShellScript {
 
-      asset.close();
-      return String.format(output.toString(), args);
-    } catch (IOException e) {
-      return null;
+    private static final double KB_PER_PACKET = 1.3;
+    private int packetThresh;
+
+    public InstallScript(int speed) {
+      packetThresh = Math.max((int) Math.round(speed / KB_PER_PACKET), 1);
     }
+
+    @Override
+    public int run(BufferedReader ins, OutputStreamWriter outs)
+        throws IOException {
+      String[] vars = new String[] { "iptables|INPUT|30|",
+          "iptables|FORWARD|30|-d 192.0.0.0/8", "ip6tables|INPUT|40|" };
+      for (String var : vars) {
+        String[] parts = var.split("\\|", -1);
+        String cmd = parts[0] + " -I " + parts[1] + " 1 " + parts[3]
+            + " -m state --state ESTABLISHED -p 6 -m length --length "
+            + parts[2] + ":10000 -m hashlimit --hashlimit-name " + CHECK_LABEL
+            + " --hashlimit-above " + packetThresh
+            + "/s -j DROP >/dev/null && echo " + CHECK_LABEL + "\n";
+        outs.write(cmd);
+        outs.flush();
+        if (!CHECK_LABEL.equals(ins.readLine())) {
+          new UninstallScript().run(ins, outs);
+          return SHELL_CMD_FAILED;
+        }
+      }
+      return SHELL_OK;
+    }
+
+  }
+
+  private static class UninstallScript implements ShellScript {
+    @Override
+    public int run(BufferedReader ins, OutputStreamWriter outs)
+        throws IOException {
+      for (String iptables : new String[] { "iptables", "ip6tables" }) {
+        outs.write(iptables + " -S; echo; echo " + CHECK_LABEL + "\n");
+        outs.flush();
+        for (String rule : getOutputUntil(ins, CHECK_LABEL)) {
+          if (!rule.contains(CHECK_LABEL))
+            continue;
+          outs.write(iptables + " -D " + rule.replaceFirst("^-A ", "")
+              + " >/dev/null \n");
+        }
+        outs.flush();
+      }
+      return SHELL_OK;
+    }
+  }
+
+  private static Collection<String> getOutputUntil(BufferedReader ins,
+      String stopLine) throws IOException {
+    ArrayList<String> lines = new ArrayList<String>();
+    while (true) {
+      String line = ins.readLine();
+      if (line == null || stopLine.equals(line))
+        break;
+      lines.add(line);
+    }
+    return lines;
   }
 }

@@ -8,11 +8,13 @@
 
     <!-- Everything below this line can be translated -->
 
-    <string name="usage_notes">❗ Speed limit is cleared after every reboot.\n❗ USB tethered and hotspot clients are not affected.</string>
+    <string name="usage_notes">❗ Speed limit is cleared after every reboot.</string>
     <string name="inbound_speed_header">Download Speed Limit</string>
     <string name="set_label">Set Limit</string>
     <string name="unset_label">Clear</string>
-    <string name="inbound_install_failed">Set limit failed</string>
-    <string name="inbound_uninstall_failed">Clear limit failed</string>
+    <string name="inbound_install_succeeded">Limit of %1$s set</string>
+    <string name="inbound_uninstall_succeeded">Limit cleared</string>
+    <string name="inbound_install_failed">Seting limit FAILED</string>
+    <string name="inbound_uninstall_failed">Clearing limit FAILED</string>
 
 </resources>
