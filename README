@@ -1,0 +1,13 @@
+Shape/limit the speed of your downloads. This is useful if you're on 3G
+or LTE and don't want videos and songs to download fast, burning through
+your data.
+
+Few things to note:
+
+ - This app requires a rooted phone.
+ - Support depends on the ROM (ie not the phone).
+ - The speed limit you set does not persist across reboots.
+
+This is also available on Google Play Store:
+
+https://play.google.com/store/apps/details?id=com.oxplot.bradybound
